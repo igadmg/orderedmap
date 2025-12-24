@@ -105,6 +105,12 @@ func (m OrderedMap[K, V]) Len() int {
 	return len(m.kv)
 }
 
+// All returns an iterator that yields all elements in the map starting
+// at the front (oldest Set element).
+func (m OrderedMap[K, V]) All() iter.Seq2[K, V] {
+	return m.AllFromFront()
+}
+
 // AllFromFront returns an iterator that yields all elements in the map starting
 // at the front (oldest Set element).
 func (m OrderedMap[K, V]) AllFromFront() iter.Seq2[K, V] {
