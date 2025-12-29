@@ -200,3 +200,14 @@ func (m OrderedMap[K, V]) Has(key K) bool {
 	_, exists := m.kv[key]
 	return exists
 }
+
+// Append value to multimap
+func AppendMultiMap[K comparable, V any](m OrderedMap[K, []V], key K, value V) OrderedMap[K, []V] {
+	if a, ok := m.Get(key); ok {
+		m.Set(key, append(a, value))
+	} else {
+		m.Set(key, []V{value})
+	}
+
+	return m
+}
