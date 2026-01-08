@@ -5,9 +5,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/elliotchance/orderedmap/v3"
+	"github.com/elliotchance/orderedmap/v4"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewOrderedMap(t *testing.T) {
@@ -117,12 +116,6 @@ func TestReplaceKey(t *testing.T) {
 		m := orderedmap.NewOrderedMap[string, string]()
 		m.Set("foo", "bar")
 		assert.True(t, m.ReplaceKey("foo", "baz"))
-
-		// Now validate the "replacement" was a success.
-		el := m.GetElement("baz")
-		require.NotNil(t, el)
-		assert.Equal(t, "bar", el.Value)
-		assert.Equal(t, "baz", el.Key)
 
 		v, ok := m.Get("baz")
 		assert.True(t, ok)
@@ -252,32 +245,6 @@ func TestDelete(t *testing.T) {
 	})
 }
 
-func TestOrderedMap_Front(t *testing.T) {
-	t.Run("NilOnEmptyMap", func(t *testing.T) {
-		m := orderedmap.NewOrderedMap[int, bool]()
-		assert.Nil(t, m.Front())
-	})
-
-	t.Run("NilOnEmptyMap", func(t *testing.T) {
-		m := orderedmap.NewOrderedMap[int, bool]()
-		m.Set(1, true)
-		assert.NotNil(t, m.Front())
-	})
-}
-
-func TestOrderedMap_Back(t *testing.T) {
-	t.Run("NilOnEmptyMap", func(t *testing.T) {
-		m := orderedmap.NewOrderedMap[int, bool]()
-		assert.Nil(t, m.Back())
-	})
-
-	t.Run("NilOnEmptyMap", func(t *testing.T) {
-		m := orderedmap.NewOrderedMap[int, bool]()
-		m.Set(1, true)
-		assert.NotNil(t, m.Back())
-	})
-}
-
 func TestOrderedMap_Copy(t *testing.T) {
 	t.Run("ReturnsEqualButNotSame", func(t *testing.T) {
 		key, value := 1, "a value"
@@ -288,7 +255,9 @@ func TestOrderedMap_Copy(t *testing.T) {
 		m2.Set(key, "a different value")
 
 		assert.Equal(t, m.Len(), m2.Len(), "not all elements are copied")
-		assert.Equal(t, value, m.GetElement(key).Value)
+		v, ok := m.Get(key)
+		assert.True(t, ok)
+		assert.Equal(t, value, v)
 	})
 }
 
@@ -298,9 +267,9 @@ func TestGetElement(t *testing.T) {
 		m.Set("foo", "bar")
 
 		var results []any
-		element := m.GetElement("foo")
-		if element != nil {
-			results = append(results, element.Key, element.Value)
+		v, ok := m.Get("foo")
+		if ok {
+			results = append(results, "foo", v)
 		}
 
 		assert.Equal(t, []any{"foo", "bar"}, results)
@@ -309,8 +278,8 @@ func TestGetElement(t *testing.T) {
 	t.Run("ElementForKeyDoesntExistOnNonEmptyMap", func(t *testing.T) {
 		m := orderedmap.NewOrderedMap[string, string]()
 		m.Set("foo", "baz")
-		element := m.GetElement("bar")
-		assert.Nil(t, element)
+		_, ok := m.Get("bar")
+		assert.False(t, ok)
 	})
 }
 
@@ -326,28 +295,6 @@ func TestSetAndGet(t *testing.T) {
 			assert.True(t, ok)
 			assert.Equal(t, v, w)
 		}
-	})
-}
-
-func TestIterations(t *testing.T) {
-	type Element struct {
-		Key   int
-		Value bool
-	}
-	t.Run("FourBoolElements", func(t *testing.T) {
-		m := orderedmap.NewOrderedMap[int, bool]()
-		expected := []Element{{5, true}, {3, false}, {1, false}, {4, true}}
-		for _, v := range expected {
-			m.Set(v.Key, v.Value)
-		}
-		element := m.Front()
-		for i := 0; i < len(expected); i++ {
-			assert.NotNil(t, element)
-			assert.Equal(t, expected[i].Key, element.Key)
-			assert.Equal(t, expected[i].Value, element.Value)
-			element = element.Next()
-		}
-		assert.Nil(t, element)
 	})
 }
 
@@ -459,23 +406,6 @@ func benchmarkOrderedMap_Get(multiplier int) func(b *testing.B) {
 
 func BenchmarkOrderedMap_Get(b *testing.B) {
 	benchmarkOrderedMap_Get(1)(b)
-}
-
-func benchmarkOrderedMap_GetElement(multiplier int) func(b *testing.B) {
-	m := orderedmap.NewOrderedMap[int, bool]()
-	for i := 0; i < 1000*multiplier; i++ {
-		m.Set(i, true)
-	}
-
-	return func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			m.GetElement(i % 1000 * multiplier)
-		}
-	}
-}
-
-func BenchmarkOrderedMap_GetElement(b *testing.B) {
-	benchmarkOrderedMap_GetElement(1)(b)
 }
 
 var tempInt int
@@ -668,24 +598,6 @@ func benchmarkOrderedMapString_Get(multiplier int) func(b *testing.B) {
 
 func BenchmarkOrderedMapString_Get(b *testing.B) {
 	benchmarkOrderedMapString_Get(1)(b)
-}
-
-func benchmarkOrderedMapString_GetElement(multiplier int) func(b *testing.B) {
-	m := orderedmap.NewOrderedMap[string, bool]()
-	a := "12345678"
-	for i := 0; i < 1000*multiplier; i++ {
-		m.Set(a+strconv.Itoa(i), true)
-	}
-
-	return func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			m.GetElement(a + strconv.Itoa(i%1000*multiplier))
-		}
-	}
-}
-
-func BenchmarkOrderedMapString_GetElement(b *testing.B) {
-	benchmarkOrderedMapString_GetElement(1)(b)
 }
 
 func benchmarkMapString_Delete(multiplier int) func(b *testing.B) {
@@ -885,25 +797,6 @@ func BenchmarkBigOrderedMap_Get(b *testing.B) {
 	benchmarkBigOrderedMap_Get()(b)
 }
 
-func benchmarkBigOrderedMap_GetElement() func(b *testing.B) {
-	m := orderedmap.NewOrderedMap[int, bool]()
-	for i := 0; i < 10000000; i++ {
-		m.Set(i, true)
-	}
-
-	return func(b *testing.B) {
-		for j := 0; j < b.N; j++ {
-			for i := 0; i < 10000000; i++ {
-				m.GetElement(i)
-			}
-		}
-	}
-}
-
-func BenchmarkBigOrderedMap_GetElement(b *testing.B) {
-	benchmarkBigOrderedMap_GetElement()(b)
-}
-
 func benchmarkBigMap_Iterate() func(b *testing.B) {
 	m := make(map[int]bool)
 	for i := 0; i < 10000000; i++ {
@@ -1050,26 +943,6 @@ func BenchmarkBigOrderedMapString_Get(b *testing.B) {
 	benchmarkBigOrderedMapString_Get()(b)
 }
 
-func benchmarkBigOrderedMapString_GetElement() func(b *testing.B) {
-	m := orderedmap.NewOrderedMap[string, bool]()
-	a := "1234567"
-	for i := 0; i < 10000000; i++ {
-		m.Set(a+strconv.Itoa(i), true)
-	}
-
-	return func(b *testing.B) {
-		for j := 0; j < b.N; j++ {
-			for i := 0; i < 10000000; i++ {
-				m.GetElement(a + strconv.Itoa(i))
-			}
-		}
-	}
-}
-
-func BenchmarkBigOrderedMapString_GetElement(b *testing.B) {
-	benchmarkBigOrderedMapString_GetElement()(b)
-}
-
 func benchmarkBigMapString_Iterate() func(b *testing.B) {
 	m := make(map[string]bool)
 	a := "12345678"
@@ -1153,7 +1026,6 @@ func BenchmarkAll(b *testing.B) {
 	b.Run("BenchmarkMap_Set", BenchmarkMap_Set)
 	b.Run("BenchmarkOrderedMap_Get", BenchmarkOrderedMap_Get)
 	b.Run("BenchmarkMap_Get", BenchmarkMap_Get)
-	b.Run("BenchmarkOrderedMap_GetElement", BenchmarkOrderedMap_GetElement)
 	b.Run("BenchmarkOrderedMap_Delete", BenchmarkOrderedMap_Delete)
 	b.Run("BenchmarkMap_Delete", BenchmarkMap_Delete)
 	b.Run("BenchmarkOrderedMap_Iterate", BenchmarkOrderedMap_Iterate)
@@ -1165,8 +1037,6 @@ func BenchmarkAll(b *testing.B) {
 	b.Run("BenchmarkMapString_Set", BenchmarkMapString_Set)
 	b.Run("BenchmarkOrderedMapString_Get", BenchmarkOrderedMapString_Get)
 	b.Run("BenchmarkMapString_Get", BenchmarkMapString_Get)
-	b.Run("BenchmarkOrderedMapString_GetElement",
-		BenchmarkOrderedMapString_GetElement)
 	b.Run("BenchmarkOrderedMapString_Delete", BenchmarkOrderedMapString_Delete)
 	b.Run("BenchmarkMapString_Delete", BenchmarkMapString_Delete)
 	b.Run("BenchmarkOrderedMapString_Iterate",
@@ -1181,7 +1051,6 @@ func BenchmarkAllBig(b *testing.B) {
 	b.Run("BenchmarkMap_Set", BenchmarkMap_Set)
 	b.Run("BenchmarkOrderedMap_Get", BenchmarkOrderedMap_Get)
 	b.Run("BenchmarkMap_Get", BenchmarkMap_Get)
-	b.Run("BenchmarkOrderedMap_GetElement", BenchmarkOrderedMap_GetElement)
 	b.Run("BenchmarkOrderedMap_Delete", BenchmarkOrderedMap_Delete)
 	b.Run("BenchmarkMap_Delete", BenchmarkMap_Delete)
 	b.Run("BenchmarkOrderedMap_Iterate", BenchmarkOrderedMap_Iterate)
@@ -1193,8 +1062,6 @@ func BenchmarkAllBig(b *testing.B) {
 	b.Run("BenchmarkBigOrderedMap_Set", BenchmarkBigOrderedMap_Set)
 	b.Run("BenchmarkBigMap_Get", BenchmarkBigMap_Get)
 	b.Run("BenchmarkBigOrderedMap_Get", BenchmarkBigOrderedMap_Get)
-	b.Run("BenchmarkBigOrderedMap_GetElement",
-		BenchmarkBigOrderedMap_GetElement)
 	b.Run("BenchmarkBigOrderedMap_Iterate", BenchmarkBigOrderedMap_Iterate)
 	b.Run("BenchmarkBigMap_Iterate", BenchmarkBigMap_Iterate)
 	b.Run("BenchmarkBigMap_Has", BenchmarkBigMap_Has)
@@ -1204,8 +1071,6 @@ func BenchmarkAllBig(b *testing.B) {
 	b.Run("BenchmarkMapString_Set", BenchmarkMapString_Set)
 	b.Run("BenchmarkOrderedMapString_Get", BenchmarkOrderedMapString_Get)
 	b.Run("BenchmarkMapString_Get", BenchmarkMapString_Get)
-	b.Run("BenchmarkOrderedMapString_GetElement",
-		BenchmarkOrderedMapString_GetElement)
 	b.Run("BenchmarkOrderedMapString_Delete", BenchmarkOrderedMapString_Delete)
 	b.Run("BenchmarkMapString_Delete", BenchmarkMapString_Delete)
 	b.Run("BenchmarkOrderedMapString_Iterate",
@@ -1218,8 +1083,6 @@ func BenchmarkAllBig(b *testing.B) {
 	b.Run("BenchmarkBigOrderedMapString_Set", BenchmarkBigOrderedMapString_Set)
 	b.Run("BenchmarkBigMapString_Get", BenchmarkBigMapString_Get)
 	b.Run("BenchmarkBigOrderedMapString_Get", BenchmarkBigOrderedMapString_Get)
-	b.Run("BenchmarkBigOrderedMapString_GetElement",
-		BenchmarkBigOrderedMapString_GetElement)
 	b.Run("BenchmarkBigOrderedMapString_Iterate",
 		BenchmarkBigOrderedMapString_Iterate)
 	b.Run("BenchmarkBigMapString_Iterate", BenchmarkBigMapString_Iterate)
