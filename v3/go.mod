@@ -1,4 +1,4 @@
-module github.com/igadmg/orderedmap/v3
+module github.com/Mishka-Squat/orderedmap/v3
 
 go 1.25.0
 
